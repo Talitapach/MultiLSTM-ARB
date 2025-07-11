@@ -1,0 +1,8 @@
+statsmodels
+snscrape
+numpy
+pandas
+matplotlib
+seaborn
+pyarrow
+keras-tuner
