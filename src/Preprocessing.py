@@ -1,6 +1,71 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from Outbreak_Classification import definir_surto
 
+def load_and_preprocess_data(filepath, window_size, numeric_columns, target_column_class, target_column_regress, timestamp_column, doenca):
+    df = pd.read_parquet(filepath)
+    
+    df = df_transforming(df)
+
+    df.sort_values(by='DT_NOTIFIC', ascending=True, inplace=True)
+
+    df.reset_index(drop=True, inplace=True)
+
+    df = definir_surto(df, 'TAXA_INC_MES', doenca)
+
+    df = df.drop_duplicates()
+
+    timestamp = df[timestamp_column]
+
+    data_scaled, scaler, y_class, y_regress, scaler_y = data_scaling(df, numeric_columns, target_column_class, target_column_regress)
+
+    X, y_out_class, y_out_regress = create_labels(data_scaled, window_size, y_class, y_regress)
+
+    X_train, X_test, y_train_class, y_test_class, y_train_regress, y_test_regress = split_data_by_time(
+        X, y_out_class, y_out_regress, timestamp[window_size:]
+    )
+
+    return df, X, scaler, scaler_y, X_train, X_test, y_train_class, y_test_class, y_train_regress, y_test_regress, timestamp
+
+
+def data_scaling(df, numeric_columns, target_column_class, target_column_regress):
+    scaler = MinMaxScaler()
+    scaler_y = MinMaxScaler()
+    
+    data_num = df[numeric_columns]
+    data_num_scaled = scaler.fit_transform(data_num)
+
+    y_regress = df[target_column_regress]
+    y_regress_scaled = scaler_y.fit_transform(y_regress.values.reshape(-1, 1))
+
+    y_class = df[target_column_class].values 
+    
+    return data_num_scaled, scaler, y_class, y_regress_scaled, scaler_y
+
+
+def create_labels(df, window_size, y_class, y_regress):
+    X, y_out_class, y_out_regress = [], [], []
+    
+    for i in range(len(df) - window_size):
+        X.append(df[i:i + window_size, :]) 
+        
+        y_out_class.append(y_class[i + window_size])
+        
+        y_out_regress.append(y_regress[i + window_size])
+    
+    return np.array(X), np.array(y_out_class), np.array(y_out_regress)
+
+
+def split_data_by_time(df_final, y_class, y_regress, timestamp, test_start="2023-01-01", val_split=0.2, seed=2021):
+    train_mask = timestamp < test_start
+    test_mask = timestamp >= test_start
+
+    X_train, X_test = df_final[train_mask], df_final[test_mask]
+    y_train_class, y_test_class = y_class[train_mask], y_class[test_mask]
+    y_train_regress, y_test_regress = y_regress[train_mask], y_regress[test_mask]
+
+    return X_train, X_test, y_train_class, y_test_class, y_train_regress, y_test_regress
 
 def df_transforming(df):
     df['NU_IDADE_N'] = df['NU_IDADE_N'].str.extract('(\d+)').astype(int)
