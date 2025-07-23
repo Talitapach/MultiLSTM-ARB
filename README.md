@@ -7,18 +7,16 @@
 </p>
 
 ## Installation & Setup
-To ensure **reproducibility**, this project can be run in a Docker container.
 
-### Using Docker
+Clone the repository and install the required packages:
+
+
 ```bash
 git clone https://github.com/Talitapach/MultiLSTM-ARB.git
-cd multitask-lstm-outbreak
 
-# Build the Docker image
-docker build -t multitask-lstm .
+cd MultiLSTM-ARB
 
-# Run the container
-docker run -it multitask-lstm bash
+pip install -r requirements.txt
 ```
 
 
